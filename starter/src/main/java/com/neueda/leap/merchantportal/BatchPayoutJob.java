@@ -14,21 +14,21 @@ public class BatchPayoutJob {
         this.payoutRepository = payoutRepository;
     }
 
-    // VULNERABILITY (A10): if the bank transfer fails partway through the
-    // nightly batch, the payout is still marked APPROVED->PAID and the loop
-    // moves on to the next merchant. There is no distinction between "this
-    // payout was never attempted" and "this payout failed after the money
-    // may have already left," so re-running the batch after a failure risks
-    // paying some merchants twice, and silently skipping others.
+    // Only APPROVED payouts are attempted, so a re-run after a partial
+    // failure skips anything already PAID/FAILED instead of retransferring.
+    // A failed transfer is marked FAILED, never PAID, so success and
+    // failure can never be confused with each other.
     public void runNightlyBatch(List<PayoutRequest> approvedPayouts) {
         for (PayoutRequest payout : approvedPayouts) {
+            if (!"APPROVED".equals(payout.getApprovalStatus())) {
+                continue;
+            }
             try {
                 bankTransferClient.transfer(payout.getMerchantId(), payout.getAmount());
                 payout.setApprovalStatus("PAID");
             } catch (BankTransferException e) {
-                log.warn("Transfer failed for payout {}, marking paid anyway: {}",
-                        payout.getId(), e.getMessage());
-                payout.setApprovalStatus("PAID");
+                log.error("Transfer failed for payout {}: {}", payout.getId(), e.getMessage(), e);
+                payout.setApprovalStatus("FAILED");
             }
             payoutRepository.save(payout);
         }
