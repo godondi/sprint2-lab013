@@ -22,11 +22,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
             <version>3.2.5</version>
         </dependency>
-        <!-- VULNERABILITY (A03): Log4Shell, CVE-2021-44228, critical RCE -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.14.1</version>
+            <version>2.24.3</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
